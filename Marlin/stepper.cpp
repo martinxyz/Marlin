@@ -23,6 +23,7 @@
 
 #include "Marlin.h"
 #include "stepper.h"
+#include "stepper_maxy.h"
 #include "planner.h"
 #include "temperature.h"
 #include "ultralcd.h"
@@ -308,6 +309,10 @@ FORCE_INLINE void trapezoid_generator_reset() {
 // It pops blocks from the block_buffer and executes them by pulsing the stepper pins appropriately. 
 ISR(TIMER1_COMPA_vect)
 {    
+  if (stepper_maxy_in_control) {
+    stepper_maxy_irq();
+    return;
+  }
   // If there is no current block, attempt to pop one from the buffer
   if (current_block == NULL) {
     // Anything in the buffer?

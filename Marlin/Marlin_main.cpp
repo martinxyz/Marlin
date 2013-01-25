@@ -39,6 +39,7 @@
 #include "ConfigurationStore.h"
 #include "language.h"
 #include "pins_arduino.h"
+#include "stepper_maxy.h"
 
 #if DIGIPOTSS_PIN > -1
 #include <SPI.h>
@@ -56,6 +57,7 @@
 // G2  - CW ARC
 // G3  - CCW ARC
 // G4  - Dwell S<seconds> or P<milliseconds>
+// G5  - maxy test
 // G10 - retract filament according to settings of M207
 // G11 - retract recover filament according to settings of M208
 // G28 - Home all Axis
@@ -488,7 +490,8 @@ void get_command()
           case 1:
           case 2:
           case 3:
-            if(Stopped == false) { // If printer is stopped by an error the G[0-3] codes are ignored.
+          case 5:
+            if(Stopped == false) { // If printer is stopped by an error the motion G codes are ignored.
 	      #ifdef SDSUPPORT
               if(card.saving)
                 break;
@@ -689,6 +692,21 @@ void process_commands()
         manage_heater();
         manage_inactivity();
         lcd_update();
+      }
+      break;
+    case 5: // G5  - maxy test
+      if(Stopped == false) {
+        float x = 0;
+        float y = 0;
+        float z = 0;
+        float e = 0;
+        float f = 0;
+        if(code_seen('X')) x = code_value();
+        if(code_seen('Y')) y = code_value();
+        if(code_seen('Z')) z = code_value();
+        if(code_seen('E')) e = code_value();
+        if(code_seen('F')) f = code_value();
+        stepper_maxy_test(x, y, z, e, f);
       }
       break;
       #ifdef FWRETRACT  
@@ -1775,7 +1793,7 @@ void manage_inactivity()
   if(stepper_inactive_time)  {
     if( (millis() - previous_millis_cmd) >  stepper_inactive_time ) 
     {
-      if(blocks_queued() == false) {
+      if(blocks_queued() == false && stepper_maxy_in_control == false) {
         disable_x();
         disable_y();
         disable_z();
