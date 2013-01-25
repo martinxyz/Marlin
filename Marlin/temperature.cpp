@@ -904,6 +904,16 @@ int read_max6675()
 // Timer 0 is shared with millies
 ISR(TIMER0_COMPB_vect)
 {
+  sei(); // allow motor steps (ISR in stepper.cpp) to interrupt the code below
+  static bool inside_timer0 = false;
+  if (inside_timer0) {
+    SERIAL_ERROR_START;
+    SERIAL_ERRORLNPGM("TIMER0 ISR is taking too long! CPU overload?");
+    return;
+  }
+  inside_timer0 = true;
+
+
   //these variables are only accesible from the ISR, but static, so they don't loose their value
   static unsigned char temp_count = 0;
   static unsigned long raw_temp_0_value = 0;
@@ -1127,4 +1137,6 @@ ISR(TIMER0_COMPB_vect)
     }
 #endif
   }  
+
+  inside_timer0 = false;
 }
