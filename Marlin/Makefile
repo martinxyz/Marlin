@@ -232,7 +232,7 @@ MAKEFILE = Makefile
 # AVR (extended) COFF requires stabs, plus an avr-objcopy run.
 DEBUG = stabs
 
-OPT = s
+OPT = 2
 
 DEFINES ?=
 
