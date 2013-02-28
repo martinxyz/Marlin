@@ -125,12 +125,16 @@
   #define PID_INTEGRAL_DRIVE_MAX 255  //limit for the integral term
   #define K1 0.95 //smoothing factor withing the PID
   #define PID_dT ((16.0 * 8.0)/(F_CPU / 64.0 / 256.0)) //sampling period of the temperature routine
-
 // If you are using a preconfigured hotend then you can use one of the value sets by uncommenting it
 // Ultimaker
-    #define  DEFAULT_Kp 22.2
-    #define  DEFAULT_Ki 1.08  
-    #define  DEFAULT_Kd 114  
+//    #define  DEFAULT_Kp 22.2
+//    #define  DEFAULT_Ki 1.08  
+//    #define  DEFAULT_Kd 114  
+
+// PID Autotune result (maxy's Ultimaker)
+    #define  DEFAULT_Kp 19.71
+    #define  DEFAULT_Ki 1.13
+    #define  DEFAULT_Kd 86.24
 
 // Makergear
 //    #define  DEFAULT_Kp 7.0
