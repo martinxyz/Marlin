@@ -1,4 +1,4 @@
-#!/usr/bin/env pylab
+#!/usr/bin/env python
 from pylab import *
 clf()
 
