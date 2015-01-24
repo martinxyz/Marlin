@@ -52,6 +52,14 @@ float current_temperature_bed = 0.0;
   int current_eforce_max_raw;
   int current_eforce_min;
   int current_eforce_max;
+  struct {
+    bool enabled;
+    float temp_lowest;
+    float temp_idle;
+    float temp_highest;
+    int target_raw_force;
+    int cor;
+  } eforce_control = {.enabled = false};
 #endif
 #ifdef PIDTEMP
   float Kp=DEFAULT_Kp;
@@ -337,6 +345,18 @@ int getHeaterPower(int heater) {
   return soft_pwm[heater];
 }
 
+#ifdef TEMP_2_IS_EFORCE 
+void setForceControlByTemperature(bool enabled, float temp_lowest, float temp_idle, float temp_highest, int target_raw_force)
+{
+  eforce_control.enabled = enabled;
+  eforce_control.temp_lowest = temp_lowest;
+  eforce_control.temp_idle = temp_idle;
+  eforce_control.temp_highest = temp_highest;
+  eforce_control.target_raw_force = target_raw_force;
+  eforce_control.cor = 0;
+}
+#endif
+
 #if (defined(EXTRUDER_0_AUTO_FAN_PIN) && EXTRUDER_0_AUTO_FAN_PIN > -1) || \
     (defined(EXTRUDER_1_AUTO_FAN_PIN) && EXTRUDER_1_AUTO_FAN_PIN > -1) || \
     (defined(EXTRUDER_2_AUTO_FAN_PIN) && EXTRUDER_2_AUTO_FAN_PIN > -1)
@@ -418,6 +438,33 @@ void manage_heater()
     return; 
 
   updateTemperaturesFromRawValues();
+  
+#ifdef TEMP_2_IS_EFORCE 
+  if (eforce_control.enabled) {
+    // (note: this runs approx. every 130ms or 7-8 times per second)
+
+    /*
+    eforce_control.cor += ((float)(current_eforce_max - eforce_control.target_raw_force)) * 0.001;
+    */
+    eforce_control.cor += current_eforce_max - eforce_control.target_raw_force;
+    const int eforce_p = 20000;
+    if (eforce_control.cor > eforce_p) {
+      eforce_control.cor -= eforce_p;
+      target_temperature[0] += 1;
+    } else if (eforce_control.cor < -eforce_p) {
+      eforce_control.cor += eforce_p;
+      target_temperature[0] -= 1;
+    }
+
+    if (target_temperature[0] > eforce_control.temp_highest) target_temperature[0] = eforce_control.temp_highest;
+    if (target_temperature[0] < eforce_control.temp_lowest)  target_temperature[0] = eforce_control.temp_lowest;
+    // TODO: idle check. No e advancement --> move towards idle temperature.
+    // some safety while debugging
+    if (target_temperature[0] > 240) {
+      target_temperature[0] = 0;
+    }
+  }
+#endif
 
   for(int e = 0; e < EXTRUDERS; e++) 
   {

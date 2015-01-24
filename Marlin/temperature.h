@@ -151,7 +151,7 @@ FORCE_INLINE bool isCoolingBed() {
 #error Invalid number of extruders
 #endif
 
-
+void setForceControlByTemperature(bool enabled, float temp_lowest, float temp_idle, float temp_highest, int target_raw_force);
 
 int getHeaterPower(int heater);
 void disable_heater();
