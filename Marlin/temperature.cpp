@@ -1293,6 +1293,8 @@ ISR(TIMER0_COMPB_vect)
     }
   }
 #endif //BABYSTEPPING
+
+  WRITE(DEBUG2_PIN, LOW);
 }
 
 #ifdef PIDTEMP

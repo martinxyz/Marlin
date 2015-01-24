@@ -425,6 +425,19 @@ void setup_powerhold()
   #endif
 }
 
+void setup_maxy()
+{
+  SET_OUTPUT(DEBUG1_PIN);
+  SET_OUTPUT(DEBUG2_PIN);
+  WRITE(DEBUG1_PIN, LOW);
+  WRITE(DEBUG2_PIN, LOW);
+
+  WRITE(DEBUG1_PIN, HIGH);
+  WRITE(DEBUG2_PIN, HIGH);
+  WRITE(DEBUG2_PIN, LOW);
+  WRITE(DEBUG1_PIN, LOW);
+}
+
 void suicide()
 {
   #if defined(SUICIDE_PIN) && SUICIDE_PIN > -1
@@ -506,9 +519,10 @@ void setup()
   {
     fromsd[i] = false;
   }
-
-  // loads data from EEPROM if available else uses defaults (and resets step acceleration rate)
+  
   Config_RetrieveSettings();
+
+  setup_maxy(); // debug
 
   tp_init();    // Initialize temperature loop
   plan_init();  // Initialize planner;
@@ -571,10 +585,13 @@ void loop()
     bufindr = (bufindr + 1)%BUFSIZE;
   }
   //check heater every n milliseconds
+  
+  WRITE(DEBUG1_PIN, HIGH);
   manage_heater();
   manage_inactivity();
   checkHitEndstops();
   lcd_update();
+  WRITE(DEBUG1_PIN, LOW);
 }
 
 void get_command()
@@ -3150,6 +3167,7 @@ void get_coordinates()
   for(int8_t i=0; i < NUM_AXIS; i++) {
     if(code_seen(axis_codes[i]))
     {
+      // XXXX maxy: are we truncating floating point gcode coordinates here? If so, why does Cura bother to write them?
       destination[i] = (float)code_value() + (axis_relative_modes[i] || relative_mode)*current_position[i];
       seen[i]=true;
     }

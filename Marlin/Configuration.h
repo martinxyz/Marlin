@@ -16,11 +16,11 @@
 // startup. Implementation of an idea by Prof Braino to inform user that any changes made to this
 // build by the user have been successfully uploaded into firmware.
 #define STRING_VERSION_CONFIG_H __DATE__ " " __TIME__ // build date and time
-#define STRING_CONFIG_H_AUTHOR "(David Braam)" //Who made the changes.
+#define STRING_CONFIG_H_AUTHOR "(Martin Renold)" //Who made the changes.
 
 //                      |01234567890123456789|
 #ifndef VERSION_BASE
-#define VERSION_BASE    "Ultimaker: DEV"
+#define VERSION_BASE    "Ultimaker: eforce"
 #endif
 #ifndef VERSION_PROFILE
 #define VERSION_PROFILE "Github checkout"
@@ -261,7 +261,7 @@
 //if PREVENT_DANGEROUS_EXTRUDE is on, you can still disable (uncomment) very long bits of extrusion separately.
 #define PREVENT_LENGTHY_EXTRUDE
 
-#define EXTRUDE_MINTEMP 170
+#define EXTRUDE_MINTEMP 120
 #define EXTRUDE_MAXLENGTH (X_MAX_LENGTH+Y_MAX_LENGTH) //prevent extrusion of very large distances.
 
 //===========================================================================
@@ -515,7 +515,7 @@ const bool Z_MAX_ENDSTOP_INVERTING = true; // set to true to invert the logic of
 //#define SD_CHECK_AND_RETRY // Use CRC checks and retries on the SD communication
 //#define ENCODER_PULSES_PER_STEP 1 // Increase if you have a high resolution encoder
 //#define ENCODER_STEPS_PER_MENU_ITEM 5 // Set according to ENCODER_PULSES_PER_STEP or your liking
-#define ULTIMAKERCONTROLLER //as available from the Ultimaker online store.
+////#define ULTIMAKERCONTROLLER //as available from the Ultimaker online store.
 //#define ULTIPANEL  //the UltiPanel as on Thingiverse
 //#define LCD_FEEDBACK_FREQUENCY_HZ 1000	// this is the tone frequency the buzzer plays when on UI feedback. ie Screen Click
 //#define LCD_FEEDBACK_FREQUENCY_DURATION_MS 100 // the duration the buzzer plays the UI feedback sound. ie Screen Click
@@ -707,6 +707,10 @@ const bool Z_MAX_ENDSTOP_INVERTING = true; // set to true to invert the logic of
 
 //define BlinkM/CyzRgb Support
 //#define BLINKM
+
+// maxy
+#define DEBUG1_PIN 58
+#define DEBUG2_PIN 59
 
 /*********************************************************************\
 * R/C SERVO support
