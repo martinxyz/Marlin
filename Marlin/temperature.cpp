@@ -47,6 +47,12 @@ float current_temperature_bed = 0.0;
   int redundant_temperature_raw = 0;
   float redundant_temperature = 0.0;
 #endif
+#ifdef TEMP_2_IS_EFORCE 
+  int current_eforce_min_raw;
+  int current_eforce_max_raw;
+  int current_eforce_min;
+  int current_eforce_max;
+#endif
 #ifdef PIDTEMP
   float Kp=DEFAULT_Kp;
   float Ki=(DEFAULT_Ki*PID_dT);
@@ -685,6 +691,10 @@ static void updateTemperaturesFromRawValues()
     #ifdef TEMP_SENSOR_1_AS_REDUNDANT
       redundant_temperature = analog2temp(redundant_temperature_raw, 1);
     #endif
+    #ifdef TEMP_2_IS_EFORCE 
+      current_eforce_min = current_eforce_min_raw;
+      current_eforce_max = current_eforce_max_raw;
+    #endif
     //Reset the watchdog after we know we have a temperature measurement.
     watchdog_reset();
 
@@ -1034,12 +1044,18 @@ int read_max6675()
 // Timer 0 is shared with millies
 ISR(TIMER0_COMPB_vect)
 {
+  WRITE(DEBUG2_PIN, HIGH);
+
   //these variables are only accesible from the ISR, but static, so they don't lose their value
   static unsigned char temp_count = 0;
   static unsigned long raw_temp_0_value = 0;
   static unsigned long raw_temp_1_value = 0;
   static unsigned long raw_temp_2_value = 0;
   static unsigned long raw_temp_bed_value = 0;
+  #ifdef TEMP_2_IS_EFORCE 
+  static int raw_eforce_min_value = 30000;
+  static int raw_eforce_max_value = 0;
+  #endif
   static unsigned char temp_state = 8;
   static unsigned char pwm_count = (1 << SOFT_PWM_SCALE);
   static unsigned char soft_pwm_0;
@@ -1178,6 +1194,13 @@ ISR(TIMER0_COMPB_vect)
     case 7: // Measure TEMP_2
       #if defined(TEMP_2_PIN) && (TEMP_2_PIN > -1)
         raw_temp_2_value += ADC;
+        #ifdef TEMP_2_IS_EFORCE 
+        {
+          int value = ADC;
+          if (value < raw_eforce_min_value) raw_eforce_min_value = value;
+          if (value > raw_eforce_max_value) raw_eforce_max_value = value;
+        }
+        #endif
       #endif
       temp_state = 0;
       temp_count++;
@@ -1207,6 +1230,10 @@ ISR(TIMER0_COMPB_vect)
 #endif
       current_temperature_bed_raw = raw_temp_bed_value;
     }
+    #ifdef TEMP_2_IS_EFORCE 
+    current_eforce_min_raw = raw_eforce_min_value;
+    current_eforce_max_raw = raw_eforce_max_value;
+    #endif
     
     temp_meas_ready = true;
     temp_count = 0;
@@ -1214,6 +1241,10 @@ ISR(TIMER0_COMPB_vect)
     raw_temp_1_value = 0;
     raw_temp_2_value = 0;
     raw_temp_bed_value = 0;
+    #ifdef TEMP_2_IS_EFORCE 
+    raw_eforce_min_value = 30000;
+    raw_eforce_max_value = 0;
+    #endif
 
 #if HEATER_0_RAW_LO_TEMP > HEATER_0_RAW_HI_TEMP
     if(current_temperature_raw[0] <= maxttemp_raw[0]) {

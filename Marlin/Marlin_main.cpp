@@ -145,6 +145,7 @@
 // M220 S<factor in percent>- set speed factor override percentage
 // M221 S<factor in percent>- set extrude factor override percentage
 // M226 P<pin number> S<pin state>- Wait until the specified pin reaches the state required
+// M227 - Read extruder force
 // M240 - Trigger a camera to take a photograph
 // M250 - Set LCD contrast C<contrast value> (value 0..63)
 // M280 - set servo position absolute. P: servo index, S: angle or microseconds
@@ -2519,6 +2520,16 @@ void process_commands()
           }
         }
       }
+    }
+    break;
+
+	case 227: // M227 - Read extruder force
+	{
+      SERIAL_ECHO("Force min ");
+      SERIAL_ECHO(current_eforce_min);
+      SERIAL_ECHO(" max ");
+      SERIAL_ECHO(current_eforce_max);
+      SERIAL_ECHOLN("");
     }
     break;
 

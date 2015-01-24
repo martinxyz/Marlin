@@ -1304,7 +1304,8 @@
 #define TEMP_1_PIN 9
 
 #define HEATER_2_PIN -1
-#define TEMP_2_PIN -1
+#define TEMP_2_PIN 2 // analog pin, for eforce
+#define TEMP_2_IS_EFORCE // extruder force measurement
 
 #define E0_STEP_PIN         43
 #define E0_DIR_PIN          45

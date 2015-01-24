@@ -44,6 +44,10 @@ extern float current_temperature_bed;
 #ifdef TEMP_SENSOR_1_AS_REDUNDANT
   extern float redundant_temperature;
 #endif
+#ifdef TEMP_2_IS_EFORCE 
+  extern int current_eforce_min;
+  extern int current_eforce_max;
+#endif
 
 #if defined(CONTROLLERFAN_PIN) && CONTROLLERFAN_PIN > -1
   extern unsigned char soft_pwm_bed;
