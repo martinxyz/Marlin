@@ -152,6 +152,8 @@ FORCE_INLINE bool isCoolingBed() {
 #endif
 
 void setForceControlByTemperature(bool enabled, float temp_lowest, float temp_idle, float temp_highest, int target_raw_force);
+void setExtruderForce(int target_raw_force);
+void setExtruderControl(int eforce_kp);
 
 int getHeaterPower(int heater);
 void disable_heater();

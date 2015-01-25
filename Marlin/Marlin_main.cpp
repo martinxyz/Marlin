@@ -587,12 +587,10 @@ void loop()
   }
   //check heater every n milliseconds
   
-  WRITE(DEBUG1_PIN, HIGH);
   manage_heater();
   manage_inactivity();
   checkHitEndstops();
   lcd_update();
-  WRITE(DEBUG1_PIN, LOW);
 }
 
 void get_command()
@@ -1223,6 +1221,20 @@ void process_commands()
         lcd_update();
       }
       break;
+    case 9: // G9 - set force (maxy testing)
+      if(Stopped == false) {
+        if(code_seen('K')) {
+          setExtruderControl(code_value());
+        }
+        if(code_seen('E')) {
+          int raw_force = code_value();
+          setExtruderForce(raw_force);
+          enable_e0();
+          previous_millis_cmd = millis();
+        }
+        prepare_arc_move(true);
+        return;
+      }
       #ifdef FWRETRACT
       case 10: // G10 retract
         retract(true);

@@ -1306,6 +1306,7 @@
 #define HEATER_2_PIN -1
 #define TEMP_2_PIN 2 // analog pin, for eforce
 #define TEMP_2_IS_EFORCE // extruder force measurement
+#define EFORCE_CONTROL // fixme: move to config file
 
 #define E0_STEP_PIN         43
 #define E0_DIR_PIN          45

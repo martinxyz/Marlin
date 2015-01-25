@@ -58,6 +58,10 @@ void st_synchronize();
 void st_set_position(const long &x, const long &y, const long &z, const long &e);
 void st_set_e_position(const long &e);
 
+#ifdef EFORCE_CONTROL
+  void st_set_e_speed(int speed);
+#endif
+
 // Get current position in steps
 long st_get_position(uint8_t axis);
 
@@ -96,6 +100,4 @@ void microstep_readings();
   void babystep(const uint8_t axis,const bool direction); // perform a short step with a single stepper motor, outside of any convention
 #endif
      
-
-
 #endif

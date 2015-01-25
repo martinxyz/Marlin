@@ -52,10 +52,8 @@ static long counter_x,       // Counter variables for the bresenham line tracer
             counter_z,
             counter_e;
 volatile static unsigned long step_events_completed; // The number of step events executed in the current block
-#ifdef ADVANCE
-  static long advance_rate, advance, final_advance = 0;
-  static long old_advance = 0;
-  static long e_steps[3];
+#ifdef EFORCE_CONTROL
+  volatile int e_speed = 0;
 #endif
 static long acceleration_time, deceleration_time;
 //static unsigned long accelerate_until, decelerate_after, acceleration_rate, initial_rate, final_rate, nominal_rate;
@@ -282,13 +280,6 @@ FORCE_INLINE unsigned short calc_timer(unsigned short step_rate) {
 // Initializes the trapezoid generator from the current block. Called whenever a new
 // block begins.
 FORCE_INLINE void trapezoid_generator_reset() {
-  #ifdef ADVANCE
-    advance = current_block->initial_advance;
-    final_advance = current_block->final_advance;
-    // Do E steps + advance steps
-    e_steps[current_block->active_extruder] += ((advance >>8) - old_advance);
-    old_advance = advance >>8;
-  #endif
   deceleration_time = 0;
   // step_rate to timer interval
   OCR1A_nominal = calc_timer(current_block->nominal_rate);
@@ -334,10 +325,6 @@ ISR(TIMER1_COMPA_vect)
           return;
         }
       #endif
-
-//      #ifdef ADVANCE
-//      e_steps[current_block->active_extruder] = 0;
-//      #endif
     }
     else {
         OCR1A=2000; // 1kHz.
@@ -527,7 +514,7 @@ ISR(TIMER1_COMPA_vect)
       }
     }
 
-    #ifndef ADVANCE
+    #ifndef EFORCE_CONTROL
       if ((out_bits & (1<<E_AXIS)) != 0) {  // -direction
         REV_E_DIR();
         count_direction[E_AXIS]=-1;
@@ -536,7 +523,7 @@ ISR(TIMER1_COMPA_vect)
         NORM_E_DIR();
         count_direction[E_AXIS]=1;
       }
-    #endif //!ADVANCE
+    #endif
 
 
 
@@ -544,19 +531,6 @@ ISR(TIMER1_COMPA_vect)
       #ifndef AT90USB
       MSerial.checkRx(); // Check for serial chars.
       #endif
-
-      #ifdef ADVANCE
-      counter_e += current_block->steps_e;
-      if (counter_e > 0) {
-        counter_e -= current_block->step_event_count;
-        if ((out_bits & (1<<E_AXIS)) != 0) { // - direction
-          e_steps[current_block->active_extruder]--;
-        }
-        else {
-          e_steps[current_block->active_extruder]++;
-        }
-      }
-      #endif //ADVANCE
 
         counter_x += current_block->steps_x;
         if (counter_x > 0) {
@@ -626,7 +600,7 @@ ISR(TIMER1_COMPA_vect)
         #endif
       }
 
-      #ifndef ADVANCE
+      #ifndef EFORCE_CONTROL
         counter_e += current_block->steps_e;
         if (counter_e > 0) {
           WRITE_E_STEP(!INVERT_E_STEP_PIN);
@@ -634,7 +608,7 @@ ISR(TIMER1_COMPA_vect)
           count_position[E_AXIS]+=count_direction[E_AXIS];
           WRITE_E_STEP(INVERT_E_STEP_PIN);
         }
-      #endif //!ADVANCE
+      #endif
       step_events_completed += 1;
       if(step_events_completed >= current_block->step_event_count) break;
     }
@@ -654,16 +628,6 @@ ISR(TIMER1_COMPA_vect)
       timer = calc_timer(acc_step_rate);
       OCR1A = timer;
       acceleration_time += timer;
-      #ifdef ADVANCE
-        for(int8_t i=0; i < step_loops; i++) {
-          advance += advance_rate;
-        }
-        //if(advance > current_block->advance) advance = current_block->advance;
-        // Do E steps + advance steps
-        e_steps[current_block->active_extruder] += ((advance >>8) - old_advance);
-        old_advance = advance >>8;
-
-      #endif
     }
     else if (step_events_completed > (unsigned long int)current_block->decelerate_after) {
       MultiU24X24toH16(step_rate, deceleration_time, current_block->acceleration_rate);
@@ -683,15 +647,6 @@ ISR(TIMER1_COMPA_vect)
       timer = calc_timer(step_rate);
       OCR1A = timer;
       deceleration_time += timer;
-      #ifdef ADVANCE
-        for(int8_t i=0; i < step_loops; i++) {
-          advance -= advance_rate;
-        }
-        if(advance < final_advance) advance = final_advance;
-        // Do E steps + advance steps
-        e_steps[current_block->active_extruder] += ((advance >>8) - old_advance);
-        old_advance = advance >>8;
-      #endif //ADVANCE
     }
     else {
       OCR1A = OCR1A_nominal;
@@ -707,62 +662,43 @@ ISR(TIMER1_COMPA_vect)
   }
 }
 
-#ifdef ADVANCE
+#ifdef EFORCE_CONTROL
   unsigned char old_OCR0A;
   // Timer interrupt for E. e_steps is set in the main routine;
   // Timer 0 is shared with millies
   ISR(TIMER0_COMPA_vect)
   {
+    WRITE(DEBUG1_PIN, HIGH);
     old_OCR0A += 52; // ~10kHz interrupt (250000 / 26 = 9615kHz)
     OCR0A = old_OCR0A;
+    static int e_steps = 0;
+    e_steps += e_speed;
     // Set E direction (Depends on E direction + advance)
-    for(unsigned char i=0; i<4;i++) {
-      if (e_steps[0] != 0) {
-        WRITE(E0_STEP_PIN, INVERT_E_STEP_PIN);
-        if (e_steps[0] < 0) {
-          WRITE(E0_DIR_PIN, INVERT_E0_DIR);
-          e_steps[0]++;
-          WRITE(E0_STEP_PIN, !INVERT_E_STEP_PIN);
-        }
-        else if (e_steps[0] > 0) {
-          WRITE(E0_DIR_PIN, !INVERT_E0_DIR);
-          e_steps[0]--;
-          WRITE(E0_STEP_PIN, !INVERT_E_STEP_PIN);
-        }
-      }
- #if EXTRUDERS > 1
-      if (e_steps[1] != 0) {
-        WRITE(E1_STEP_PIN, INVERT_E_STEP_PIN);
-        if (e_steps[1] < 0) {
-          WRITE(E1_DIR_PIN, INVERT_E1_DIR);
-          e_steps[1]++;
-          WRITE(E1_STEP_PIN, !INVERT_E_STEP_PIN);
-        }
-        else if (e_steps[1] > 0) {
-          WRITE(E1_DIR_PIN, !INVERT_E1_DIR);
-          e_steps[1]--;
-          WRITE(E1_STEP_PIN, !INVERT_E_STEP_PIN);
-        }
-      }
- #endif
- #if EXTRUDERS > 2
-      if (e_steps[2] != 0) {
-        WRITE(E2_STEP_PIN, INVERT_E_STEP_PIN);
-        if (e_steps[2] < 0) {
-          WRITE(E2_DIR_PIN, INVERT_E2_DIR);
-          e_steps[2]++;
-          WRITE(E2_STEP_PIN, !INVERT_E_STEP_PIN);
-        }
-        else if (e_steps[2] > 0) {
-          WRITE(E2_DIR_PIN, !INVERT_E2_DIR);
-          e_steps[2]--;
-          WRITE(E2_STEP_PIN, !INVERT_E_STEP_PIN);
-        }
-      }
- #endif
+    
+    if (e_steps >= 0) {
+      WRITE(E0_DIR_PIN, !INVERT_E0_DIR);
+    } else {
+      WRITE(E0_DIR_PIN, INVERT_E0_DIR);
     }
+    //  count_direction[E_AXIS]=-1;
+
+    for(int i=0; i<4;i++) {
+      // FIXME: check stepstick timing constraints (minimum pulse width, time between pulses)
+      if (e_steps >= 2048/2) {
+        WRITE(E0_STEP_PIN, !INVERT_E_STEP_PIN);
+        e_steps -= 2048;
+        //count_position[E_AXIS]+=count_direction[E_AXIS];
+        WRITE(E0_STEP_PIN,  INVERT_E_STEP_PIN);
+      } else if (e_steps < -2048/2) {
+        WRITE(E0_STEP_PIN, !INVERT_E_STEP_PIN);
+        e_steps += 2048;
+        //count_position[E_AXIS]+=count_direction[E_AXIS];
+        WRITE(E0_STEP_PIN,  INVERT_E_STEP_PIN);
+      }
+    }
+    WRITE(DEBUG1_PIN, LOW);
   }
-#endif // ADVANCE
+#endif // EFORCE_CONTROL
 
 void st_init()
 {
@@ -952,16 +888,14 @@ void st_init()
   TCNT1 = 0;
   ENABLE_STEPPER_DRIVER_INTERRUPT();
 
-  #ifdef ADVANCE
+  #ifdef EFORCE_CONTROL
   #if defined(TCCR0A) && defined(WGM01)
     TCCR0A &= ~(1<<WGM01);
     TCCR0A &= ~(1<<WGM00);
   #endif
-    e_steps[0] = 0;
-    e_steps[1] = 0;
-    e_steps[2] = 0;
+    e_speed = 0;
     TIMSK0 |= (1<<OCIE0A);
-  #endif //ADVANCE
+  #endif //EFORCE_CONTROL
 
   enable_endstops(true); // Start with endstops active. After homing they can be disabled
   sei();
@@ -1004,6 +938,14 @@ long st_get_position(uint8_t axis)
   return count_pos;
 }
 
+void st_set_e_speed(int speed)
+{
+  CRITICAL_SECTION_START;
+  e_speed = speed;
+  CRITICAL_SECTION_END;
+}
+
+
 #ifdef ENABLE_AUTO_BED_LEVELING
 float st_get_position_mm(uint8_t axis)
 {
@@ -1029,6 +971,7 @@ void quickStop()
   while(blocks_queued())
     plan_discard_current_block();
   current_block = NULL;
+  //set_e_speed(0); todo?
   ENABLE_STEPPER_DRIVER_INTERRUPT();
 }
 
