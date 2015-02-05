@@ -668,7 +668,6 @@ ISR(TIMER1_COMPA_vect)
   // Timer 0 is shared with millies
   ISR(TIMER0_COMPA_vect)
   {
-    WRITE(DEBUG1_PIN, HIGH);
     old_OCR0A += 52; // ~10kHz interrupt (250000 / 26 = 9615kHz)
     OCR0A = old_OCR0A;
     static int e_steps = 0;
@@ -696,7 +695,6 @@ ISR(TIMER1_COMPA_vect)
         WRITE(E0_STEP_PIN,  INVERT_E_STEP_PIN);
       }
     }
-    WRITE(DEBUG1_PIN, LOW);
   }
 #endif // EFORCE_CONTROL
 
@@ -940,9 +938,11 @@ long st_get_position(uint8_t axis)
 
 void st_set_e_speed(int speed)
 {
+#ifdef EFORCE_CONTROL
   CRITICAL_SECTION_START;
   e_speed = speed;
   CRITICAL_SECTION_END;
+#endif
 }
 
 

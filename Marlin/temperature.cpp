@@ -56,14 +56,9 @@ float current_temperature_bed = 0.0;
   int current_eforce_min;
   int current_eforce_max;
   struct {
-    bool enabled;
-    float temp_lowest;
-    float temp_idle;
-    float temp_highest;
     int target_raw_force;
-    int cor;
     int kp;
-  } eforce_control = {.enabled = false};
+  } eforce_control;
 #endif
 #ifdef PIDTEMP
   float Kp=DEFAULT_Kp;
@@ -350,15 +345,6 @@ int getHeaterPower(int heater) {
 }
 
 #ifdef TEMP_2_IS_EFORCE 
-void setForceControlByTemperature(bool enabled, float temp_lowest, float temp_idle, float temp_highest, int target_raw_force)
-{
-  eforce_control.enabled = enabled;
-  eforce_control.temp_lowest = temp_lowest;
-  eforce_control.temp_idle = temp_idle;
-  eforce_control.temp_highest = temp_highest;
-  eforce_control.target_raw_force = target_raw_force;
-  eforce_control.cor = 0;
-}
 void setExtruderForce(int target_raw_force)
 {
   eforce_control.target_raw_force = target_raw_force;
@@ -449,32 +435,14 @@ void manage_heater()
   if(temp_meas_ready != true)   //better readability
     return; 
 
+  WRITE(DEBUG1_PIN, HIGH);
+
   updateTemperaturesFromRawValues();
   
 #ifdef TEMP_2_IS_EFORCE 
-  if (eforce_control.enabled) {
-    // control temperature
-    // (note: this runs approx. every 130ms or 7-8 times per second)
-    eforce_control.cor += current_eforce_max - eforce_control.target_raw_force;
-    const int eforce_p = 20000;
-    if (eforce_control.cor > eforce_p) {
-      eforce_control.cor -= eforce_p;
-      target_temperature[0] += 1;
-    } else if (eforce_control.cor < -eforce_p) {
-      eforce_control.cor += eforce_p;
-      target_temperature[0] -= 1;
-    }
-
-    if (target_temperature[0] > eforce_control.temp_highest) target_temperature[0] = eforce_control.temp_highest;
-    if (target_temperature[0] < eforce_control.temp_lowest)  target_temperature[0] = eforce_control.temp_lowest;
-    // TODO: idle check. No e advancement --> move towards idle temperature.
-    // some safety while debugging
-    if (target_temperature[0] > 240) {
-      target_temperature[0] = 0;
-    }
-  } else {
+  {
     #ifdef EFORCE_CONTROL
-    // control e-motor speed
+    // control e-force by setting e-motor speed
     // (note: proper PID position control may work better? nevermind for now)
     // (note: average would work better than min/max)
     int diff = (current_eforce_max + current_eforce_min)/2 - eforce_control.target_raw_force;
@@ -482,25 +450,16 @@ void manage_heater()
     if (espeed > 4000) espeed = 4000;
     if (espeed < -4000) espeed = -4000;
     st_set_e_speed(espeed);
-    //st_set_e_speed(2048);
-    //2048
     // no: set_e_speed(baserate + diff ???? )
     
-    static int kkk = 0;
-    if (kkk++ % 16 == 0) {
-      SERIAL_ECHO_START;
-      SERIAL_ECHO(" Target ");
-      SERIAL_ECHO(eforce_control.target_raw_force);
-      SERIAL_ECHO(" Current ");
-      SERIAL_ECHO((current_eforce_max + current_eforce_min)/2);
-      SERIAL_ECHO(" kp ");
-      SERIAL_ECHO(eforce_control.kp);
-      SERIAL_ECHO(" Diff ");
-      SERIAL_ECHO(diff);
-      SERIAL_ECHO(" espeed ");
-      SERIAL_ECHOLN(espeed);
+    {
+      WRITE(DEBUG2_PIN, HIGH);
+      SERIAL_ECHO("EF ");
+      SERIAL_ECHO(espeed);
+      SERIAL_ECHO(" ");
+      SERIAL_ECHOLN(current_temperature[0]);
+      WRITE(DEBUG2_PIN, LOW);
     }
-    #endif
   }
 #endif
 
@@ -609,6 +568,8 @@ void manage_heater()
   }  
   #endif       
   
+  WRITE(DEBUG1_PIN, LOW);
+
   #ifndef PIDTEMPBED
   if(millis() - previous_millis_bed_heater < BED_CHECK_INTERVAL)
     return;
@@ -891,8 +852,8 @@ void tp_init()
   
 
 #ifdef EFORCE_CONTROL
-  eforce_control.enabled = false;
   eforce_control.kp = 256;
+  eforce_control.target_raw_force = 400;
 #endif
 
   // Wait for temperature measurement to settle
@@ -1136,8 +1097,6 @@ int read_max6675()
 // Timer 0 is shared with millies
 ISR(TIMER0_COMPB_vect)
 {
-  WRITE(DEBUG2_PIN, HIGH);
-
   //these variables are only accesible from the ISR, but static, so they don't lose their value
   static unsigned char temp_count = 0;
   static unsigned long raw_temp_0_value = 0;
@@ -1416,8 +1375,6 @@ ISR(TIMER0_COMPB_vect)
     }
   }
 #endif //BABYSTEPPING
-
-  WRITE(DEBUG2_PIN, LOW);
 }
 
 #ifdef PIDTEMP

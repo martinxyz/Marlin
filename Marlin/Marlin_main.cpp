@@ -1232,17 +1232,17 @@ void process_commands()
           enable_e0();
           previous_millis_cmd = millis();
         }
-        prepare_arc_move(true);
-        return;
       }
-      #ifdef FWRETRACT
-      case 10: // G10 retract
-        retract(true);
       break;
-      case 11: // G11 retract_recover
-        retract(false);
+
+#ifdef FWRETRACT
+    case 10: // G10 retract
+      retract(true);
       break;
-      #endif //FWRETRACT
+    case 11: // G11 retract_recover
+      retract(false);
+      break;
+#endif //FWRETRACT
     case 28: //G28 Home all Axis one at a time
 #ifdef ENABLE_AUTO_BED_LEVELING
       plan_bed_level_matrix.set_to_identity();  //Reset the plane ("erase" all leveling data)
@@ -1852,40 +1852,6 @@ void process_commands()
         break;
       }
       if (code_seen('S')) setTargetHotend(code_value(), tmp_extruder);
-#ifdef TEMP_2_IS_EFORCE
-      //if (code_seen('R')) setTargetHotend(code_value(), tmp_extruder);
-      {
-        bool enabled = false;
-        float temp_lowest = -1;
-        float temp_idle = -1;
-        float temp_highest = -1;
-        int target_raw_force = 700;
-        if (code_seen('L')) {
-          enabled = true;
-          temp_lowest = code_value();
-        }
-        if (code_seen('I')) {
-          enabled = true;
-          temp_idle = code_value();
-        }
-        if (code_seen('H')) {
-          enabled = true;
-          temp_highest = code_value();
-        }
-        if (enabled) {
-          if (temp_lowest == -1 || temp_idle == -1 || temp_highest == -1) {
-            SERIAL_ERROR_START;
-            SERIAL_ERRORLN("L, I and H must appear together");
-            enabled = false;
-          }
-          if (temp_highest < temp_lowest) {
-            enabled = false;
-          }
-        }
-        // note: ordinary M104 will disable force control
-        setForceControlByTemperature(enabled, temp_lowest, temp_idle, temp_highest, target_raw_force);
-      }
-#endif
 #ifdef DUAL_X_CARRIAGE
       if (dual_x_carriage_mode == DXC_DUPLICATION_MODE && tmp_extruder == 0)
         setTargetHotend1(code_value() == 0.0 ? 0.0 : code_value() + duplicate_extruder_temp_offset);
@@ -3224,7 +3190,6 @@ void get_coordinates()
   for(int8_t i=0; i < NUM_AXIS; i++) {
     if(code_seen(axis_codes[i]))
     {
-      // XXXX maxy: are we truncating floating point gcode coordinates here? If so, why does Cura bother to write them?
       destination[i] = (float)code_value() + (axis_relative_modes[i] || relative_mode)*current_position[i];
       seen[i]=true;
     }
